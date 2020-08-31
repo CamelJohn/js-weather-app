@@ -1,16 +1,10 @@
 //write your code here
-"use strict";
+const key = '557ecd4b8c8bbba02f4a50afe884934b';
 document.querySelector('body').style.fontFamily = 'arial';
 
-const testLat = '32.085300';
-const testLon = '34.781769';
-const testCityName = 'Tel Aviv';
-const testCelcius = `30 &#8451;`;
-const testWeather = 'Sunny';
-
-const farenheight = '&#8457;';
-const celsius = '&#8451;';
-
+/**
+ * Grab all elements from the DOM
+ */ 
 const LOADER$ = document.getElementById('loader');
 const LOCATION$ = document.getElementById('weather_location');
 const TEMPERATURE$ = document.getElementById('weather_temp');
@@ -22,8 +16,14 @@ const SKYCONS$ = new Skycons({ color: "orange" });
 
 let controller;
 
-const url = (lat, lon) => `https://cors-anywhere.herokuapp.com/https://api.darksky.net/forecast/557ecd4b8c8bbba02f4a50afe884934b/${lat},${lon}`;
+/** Perfix url with cors-anywhere to circumvent samesite CORS 
+ *  Add lat & long as query-params
+*/
+const url = (lat, lon) => `https://cors-anywhere.herokuapp.com/https://api.darksky.net/forecast/${key}/${lat},${lon}`;
 
+/**
+ * Display loading spinner - Hide the res
+ */
 const showLoader = () => {
   LOADER$.style.display = 'inline-block';
   ERROR_TEXT$.style.display = 'none';
@@ -33,8 +33,14 @@ const showLoader = () => {
 
 const hideLoader = () => LOADER$.style.display = 'none';
 
+/**
+ * The API returns farenheight so we convert it into celsius 
+ */
 const Farenheight2Celsius = temp => (((temp - 32) * 5) / 9).toFixed(2);
 
+/**
+ * Attaches the data from the API to the respective DOM elements
+ */
 const showWeather = (temp, desc, icon, location) => {
   LOCATION$.textContent = location || 'My Location';
   TEMPERATURE$.textContent = Farenheight2Celsius(temp);
@@ -52,13 +58,18 @@ const showError = error => {
   ERROR_TEXT$.style.display = "block";
   ERROR_TEXT$.style.color = 'red';
   ERROR_TEXT$.style.backgroundColor = 'lightsalmon';
-  ERROR_TEXT$.style.padding = '2rem 20rem';
+  ERROR_TEXT$.style.padding = '2rem 5rem';
+  ERROR_TEXT$.style.width = '60%';
+  ERROR_TEXT$.style.marginLeft = '15%';
   ERROR_TEXT$.style.border = '2px red solid';
   ERROR_TEXT$.style.borderRadius = '5px';
+
+  setTimeout(() => ERROR_TEXT$.style.display = 'none', 2000);
 }
 
-const changeWeatherDescription = description => DESCRIPTION$.textContent = description;
-
+/**
+ * Remove the css class of 'selected' from the last selected element & adds it to the current selected element
+ */
 const toggleSelectedTab = tab => {
   const selected = document.querySelector('.selected');
   selected.classList.remove('selected');
@@ -68,17 +79,9 @@ const toggleSelectedTab = tab => {
   tab.dataset.iscurrent = true;
 }
 
-const toggleErrorText = error => {
-  ERROR_TEXT$.style.display = 'inline-block';
-  ERROR_TEXT$.style.color = 'red';
-  ERROR_TEXT$.style.fontFamily = 'arial';
-  ERROR_TEXT$.style.backgroundColor = 'lightsalmon';
-  ERROR_TEXT$.style.padding = '2rem 0';
-  ERROR_TEXT$.style.border = '2px red solid';
-  ERROR_TEXT$.style.borderRadius = '5px';
-  ERROR_TEXT$.innerText = error;
-}
-
+/**
+ * XHR implementation for fetching the data (with a GET request)
+ */
 const getWeatherData = (tabName, lat, lon) => {
   const xhr = new XMLHttpRequest();
 
@@ -86,11 +89,7 @@ const getWeatherData = (tabName, lat, lon) => {
   
   xhr.responseType = 'json';
 
-  xhr.onload = () => {
-
-    const { summary, temperature, icon } = xhr.response.currently;
-    showWeather(temperature, summary, icon, tabName);
-  }
+  xhr.onload = () => showWeather(xhr.response.currently.temperature, xhr.response.currently.summary, xhr.response.currently.icon, tabName);
 
   xhr.send();
 }
@@ -98,6 +97,9 @@ const getWeatherData = (tabName, lat, lon) => {
 const tabs$ = TABS$;
 let tabs = [];
 
+/**
+ * a crude way of adding event listeners to the different tabs
+ */
 tabs$.childNodes.forEach(tab => tab.nodeType != Node.TEXT_NODE ? tabs = [...tabs, tab] : null );
 tabs.forEach(tab => tab.addEventListener('click', async () => {
   if (tab === document.querySelector('.selected')) return;
@@ -120,8 +122,10 @@ tabs.forEach(tab => tab.addEventListener('click', async () => {
   getWeatherData(tab.innerText, lat, long);
 }));
 
-
-async function getCoords() {
+/**
+ * get longitude and latitude wih browser geolocation API
+ */
+const getCoords = async () => {
 	if (!navigator.geolocation) {
 		throw new Error("Current location disabled due to browser limitation");
 	}
@@ -133,19 +137,16 @@ async function getCoords() {
 				resolve({ lat, long });
 			},
 			() => {
-				showError("Unable to retrieve your location");
-				reject("Unable to retrieve your location");
+				showError("Unable to retrieve your location.");
+				reject("Unable to retrieve your location.");
 			}
 		);
 	});
 }
 
-const handleFetch = (lat, long, signal) => {
-  getWeatherData(null, lat, long);
-}
-
-// controller = new AbortController();
-
+/**
+ * feed the data to our XHR to get the weather at our current coordinates
+ */
 const getMyLocation = async () => {
   const data = await getCoords();
   getWeatherData(null, data.lat, data.long);
